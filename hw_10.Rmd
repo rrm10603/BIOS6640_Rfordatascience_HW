@@ -1,0 +1,113 @@
+---
+title: "Homework 10"
+author: "Rob McNeil"
+date: "2024-11-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+/home/robmcneil/Documents/advanced_data/children_per_woman_total_fertility.csv
+Load libraries, import datasets
+```{r, echo=FALSE}
+library(readr)
+library(tidyverse)
+library(dplyr)
+
+#read fertility dataset and life expectancy dataset in from gapminder
+fertility <- read.csv("/home/robmcneil/Documents/advanced_data/children_per_woman_total_fertility.csv")
+
+life_expectancy <-read.csv("/home/robmcneil/Documents/advanced_data/lex.csv")
+
+#read in with 'X' prefixing each column name. use gsub function to replace X in stings with blank space
+colnames(fertility) <- gsub("^X", "", colnames(fertility))
+colnames(life_expectancy) <- gsub("X", "", colnames(life_expectancy))
+head(fertility)
+head(life_expectancy)
+
+```
+
+Transform data sets from wide format to long format to make them easier to use 
+pivot_longer(data, cols, names_to = "name",
+values_to = "value", values_drop_na = FALSE)
+
+
+billboard |> 
+  pivot_longer(
+    cols = starts_with("wk"), 
+    names_to = "week", 
+    values_to = "rank",
+    values_drop_na = TRUE
+  )
+
+```{r}
+
+fertility_long <- fertility |>
+  pivot_longer(cols = -country, names_to = 'year', values_to = 'fertility_rate', values_drop_na = TRUE)
+
+life_expectancy_long <- life_expectancy |>
+  pivot_longer(cols = -country, names_to = 'year', values_to = 'life_expectancy',
+               values_drop_na = TRUE)
+
+#data quality checks 
+
+max(fertility_long$year)
+max(life_expectancy_long$year)
+unique(fertility_long$year)
+unique(life_expectancy_long$year)
+```
+fertility_filtered <- fertility_long |>
+  filter(as.numeric(year) > 1950 & as.numeric(year) <= 2020)
+filter datasets, then join
+```{r, echo = FALSE}
+
+fertility_long <- fertility_long|>
+  filter(as.numeric(year) >1950 & as.numeric(year)<=2020)
+
+life_expectancy_long <-life_expectancy_long |>
+  filter(as.numeric(year)>1950 & as.numeric(year)<=2020)
+
+#convert year to numeric
+fertility_long$year <- as.numeric(fertility_long$year)
+life_expectancy_long$year <- as.numeric(life_expectancy_long$year)
+
+
+
+```
+
+data quality check
+```{r}
+# Check unique countries in both data frames
+unique_countries_fertility <- unique(fertility_long$country)
+unique_countries_life_expectancy <- unique(life_expectancy_long$country)
+
+# Find countries in fertility_long but not in life_expectancy_long
+missing_in_life_expectancy <- setdiff(unique_countries_fertility, unique_countries_life_expectancy)
+
+# Find countries in life_expectancy_long but not in fertility_long
+missing_in_fertility <- setdiff(unique_countries_life_expectancy, unique_countries_fertility)
+
+# Print the results
+print(paste("Countries in fertility_long but not in life_expectancy_long:", length(missing_in_life_expectancy)))
+print(paste("Countries in life_expectancy_long but not in fertility_long:", length(missing_in_fertility)))
+
+# Find the country in fertility_long but not in life_expectancy_long
+missing_country <- missing_in_life_expectancy
+print(missing_country)
+
+#returns 'Holy See' 
+
+```
+
+```{r}
+
+fertility_life_expectancy <- inner_join(fertility_long,life_expectancy_long, by= c('country','year'))
+
+
+head(fertility_life_expectancy)
+
+```
+
+Hypothesis testing
