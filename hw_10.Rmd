@@ -15,15 +15,25 @@ Load libraries, import datasets
 library(readr)
 library(tidyverse)
 library(dplyr)
+library(ggplot2)
+library(gganimate)
+library(countrycode)
 
 #read fertility dataset and life expectancy dataset in from gapminder
-fertility <- read.csv("/home/robmcneil/Documents/advanced_data/children_per_woman_total_fertility.csv")
+#Linux Pathway 
+#fertility <- read.csv("/home/robmcneil/Documents/advanced_data/children_per_woman_total_fertility.csv")
+#life_expectancy <-read.csv("/home/robmcneil/Documents/advanced_data/lex.csv")
 
-life_expectancy <-read.csv("/home/robmcneil/Documents/advanced_data/lex.csv")
+#Windows Pathway 
+
+fertility <-read.csv("C:/Users/rrm10/OneDrive/Desktop/R_MD/children_per_woman_total_fertility.csv")
+life_expectancy <-read.csv("C:/Users/rrm10/OneDrive/Desktop/R_MD/lex.csv")
+population <- read.csv("C:/Users/rrm10/OneDrive/Desktop/R_MD/pop.csv")
 
 #read in with 'X' prefixing each column name. use gsub function to replace X in stings with blank space
 colnames(fertility) <- gsub("^X", "", colnames(fertility))
 colnames(life_expectancy) <- gsub("X", "", colnames(life_expectancy))
+colnames(population)<-gsub("X", "",colnames(population))
 head(fertility)
 head(life_expectancy)
 
@@ -34,13 +44,6 @@ pivot_longer(data, cols, names_to = "name",
 values_to = "value", values_drop_na = FALSE)
 
 
-billboard |> 
-  pivot_longer(
-    cols = starts_with("wk"), 
-    names_to = "week", 
-    values_to = "rank",
-    values_drop_na = TRUE
-  )
 
 ```{r}
 
@@ -51,6 +54,12 @@ life_expectancy_long <- life_expectancy |>
   pivot_longer(cols = -country, names_to = 'year', values_to = 'life_expectancy',
                values_drop_na = TRUE)
 
+population_long <- population |>
+  pivot_longer(cols = -country, names_to= 'year', values_to = 'population',
+               values_drop_na = TRUE)|>
+  mutate(population = gsub("M", "",population),
+         population = as.numeric(population)*1e6)
+
 #data quality checks 
 
 max(fertility_long$year)
@@ -58,9 +67,7 @@ max(life_expectancy_long$year)
 unique(fertility_long$year)
 unique(life_expectancy_long$year)
 ```
-fertility_filtered <- fertility_long |>
-  filter(as.numeric(year) > 1950 & as.numeric(year) <= 2020)
-filter datasets, then join
+
 ```{r, echo = FALSE}
 
 fertility_long <- fertility_long|>
@@ -69,9 +76,13 @@ fertility_long <- fertility_long|>
 life_expectancy_long <-life_expectancy_long |>
   filter(as.numeric(year)>1950 & as.numeric(year)<=2020)
 
+population_long <-population_long |>
+  filter(as.numeric(year)>1950 & as.numeric(year)<=2020)
+
 #convert year to numeric
 fertility_long$year <- as.numeric(fertility_long$year)
 life_expectancy_long$year <- as.numeric(life_expectancy_long$year)
+population_long$year <-as.numeric(population_long$year)
 
 
 
@@ -97,17 +108,69 @@ print(paste("Countries in life_expectancy_long but not in fertility_long:", leng
 missing_country <- missing_in_life_expectancy
 print(missing_country)
 
-#returns 'Holy See' 
+#returns 'Holy See' - I'm going to go ahead and leave this in 
 
 ```
 
 ```{r}
 
 fertility_life_expectancy <- inner_join(fertility_long,life_expectancy_long, by= c('country','year'))
+fertility_life_expectancy <-inner_join(fertility_life_expectancy,population_long, by =c('country','year'))
 
 
-head(fertility_life_expectancy)
+#head(fertility_life_expectancy)
+
+#unique(fertility_life_expectancy$country)
+
+#use countrycode package to add a continent column
+
+fertility_life_expectancy$continent <- countrycode(fertility_life_expectancy$country,
+                                                   origin = 'country.name',
+                                                   destination = 'continent')
+#missing values
+colSums(is.na(fertility_life_expectancy))
+min(fertility_life_expectancy$life_expectancy)
+max(fertility_life_expectancy$life_expectancy)
+
+#remove missing values 
+fertility_life_expectancy <- fertility_life_expectancy |>
+  filter(!is.na(population))|>
+  filter(life_expectancy>0)
 
 ```
 
 Hypothesis testing
+
+```{r}
+
+#create a plot using ggplot2
+
+plot <- ggplot(fertility_life_expectancy,
+               aes(x= fertility_rate, y=life_expectancy,size=population, color=continent ))+
+  geom_point(alpha = 0.7, show.legend = FALSE) + 
+  geom_text(aes(label = country), show.legend = FALSE) +
+  scale_x_log10()+
+  scale_size(range = c(2,12))+
+  scale_colour_viridis_d() + 
+  labs(x= 'Fertility Rate Per Country', y= 'Life Expectancy')
+
+plot
+
+```
+
+
+
+```{r}
+#attempt 2
+
+ggplot(fertility_life_expectancy, aes(x = fertility_rate, y = life_expectancy)) +
+  geom_point(alpha = 0.7, color = "blue") +   # Points with transparency for better visualization
+  scale_x_log10() +                          # Log scale for fertility_rate (optional)
+  scale_y_continuous(limits = c(0, 90)) +    # Adjust y-axis to ensure all life_expectancy values fit
+  labs(x = "Fertility Rate", y = "Life Expectancy") +
+  theme_minimal()   
+
+
+
+
+```
