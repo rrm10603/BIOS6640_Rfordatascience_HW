@@ -16,13 +16,15 @@ Null hypothesis: changes in total fertility rate from 1952 to 2007 are associate
 
 Alternative hypothesis: changes in total fertility rate from  1952 to 2007 are associated with changes in life expectancy 
 
-```{r, echo=FALSE}
+```{r,warning=FALSE,message=FALSE}
 library(readr)
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(gganimate)
 library(countrycode)
+library(magick)
+library(gifski)
 
 #read fertility dataset and life expectancy dataset in from gapminder
 #Linux Pathway 
@@ -51,7 +53,7 @@ values_to = "value", values_drop_na = FALSE)
 
 
 
-```{r, echo =FALSE}
+```{r,message=FALSE,warning=FALSE}
 
 fertility_long <- fertility |>
   pivot_longer(cols = -country, names_to = 'year', values_to = 'fertility_rate', values_drop_na = TRUE)
@@ -68,13 +70,13 @@ population_long <- population |>
 
 #data quality checks pulls some warnings, due to NA values in 2100 or future years
 
-max(fertility_long$year)
-max(life_expectancy_long$year)
-unique(fertility_long$year)
-unique(life_expectancy_long$year)
+#max(fertility_long$year)
+#max(life_expectancy_long$year)
+#unique(fertility_long$year)
+#unique(life_expectancy_long$year)
 ```
 
-```{r, echo = FALSE}
+```{r,warning=FALSE,message=FALSE}
 
 
 
@@ -105,7 +107,7 @@ max(fertility_long$year)
 ```
 
 data quality check
-```{r}
+```{r,warning=FALSE,message=FALSE}
 # Check unique countries in both data frames
 unique_countries_fertility <- unique(fertility_long$country)
 unique_countries_life_expectancy <- unique(life_expectancy_long$country)
@@ -125,15 +127,15 @@ missing_in_fertility <- setdiff(unique_countries_life_expectancy, unique_countri
 #find countries in population_long but not in fertility_long
 missing_in_population <-setdiff(unique_countries_fertility,unique_countries_population)
 
-# Print the results
-print(paste("Countries in fertility_long but not in life_expectancy_long:", length(missing_in_life_expectancy)))
-print(paste("Countries in life_expectancy_long but not in fertility_long:", length(missing_in_fertility)))
-print(paste("Countries in population but not in fertility:",
-            length(missing_in_population)))
+# Print the results to check
+#print(paste("Countries in fertility_long but not in life_expectancy_long:", #length(missing_in_life_expectancy)))
+#print(paste("Countries in life_expectancy_long but not in fertility_long:", length(missing_in_fertility)))
+#print(paste("Countries in population but not in fertility:",
+            #length(missing_in_population)))
 
 # Find the country in fertility_long but not in life_expectancy_long
 missing_country <- missing_in_life_expectancy
-print(missing_country)
+#print(missing_country)
 
 #returns 'Holy See' - I'm going to go ahead and leave this in 
 
@@ -141,7 +143,7 @@ print(missing_country)
 
 
 Join tables 
-```{r}
+```{r, message=FALSE,warning=FALSE}
 
 fertility_life_expectancy <- inner_join(fertility_long,life_expectancy_long, by= c('country','year'))
 fertility_life_expectancy <-inner_join(fertility_life_expectancy,population_long, by =c('country','year'))
@@ -157,13 +159,13 @@ fertility_life_expectancy$continent <- countrycode(fertility_life_expectancy$cou
                                                    origin = 'country.name',
                                                    destination = 'continent')
 #missing values, min/max
-colSums(is.na(fertility_life_expectancy))
-min(fertility_life_expectancy$life_expectancy)
-max(fertility_life_expectancy$life_expectancy)
-min(fertility_life_expectancy$population)
-max(fertility_life_expectancy$population)
-min(fertility_life_expectancy$year)
-max(fertility_life_expectancy$year)
+#colSums(is.na(fertility_life_expectancy))
+#min(fertility_life_expectancy$life_expectancy)
+#max(fertility_life_expectancy$life_expectancy)
+#min(fertility_life_expectancy$population)
+#max(fertility_life_expectancy$population)
+#min(fertility_life_expectancy$year)
+#max(fertility_life_expectancy$year)
 
 #remove missing values 
 fertility_life_expectancy <- fertility_life_expectancy |>
@@ -172,9 +174,10 @@ fertility_life_expectancy <- fertility_life_expectancy |>
 
 ```
 
-Hypothesis testing with data visualization 
+Hypothesis testing with data visualization. Our initial plot appears to show a linear relationship between life expectancy and total fertility rate, with countries with lower fertility rates having higher life expectancies. Inclusion of an animation allows us to see how the relationship for individual countries (color coded by continent) changes over time, confirming my alternate hypothesis that countries that experience lower total fertility rate have increasing life expectancies between 1952 and 2007. Thus, I can reject the null hypothesis in favor of my alternative based on these results.  
 
-```{r}
+
+```{r,  message=FALSE,warning=FALSE}
 
 
 
@@ -206,24 +209,7 @@ plot + transition_time(year) + labs(title = "Year:{frame_time}")
 
 ```
 
-From the plot, we can see life expectancy increasing as total fertility rate decreases. Thus, we can reject the null hypothesis and conclude that decreased Total Fertility Rates are associated with increased life expectrancies. 
-
-```{r}
-# Adding transition for animation
-animated_plot <- plot + 
-  transition_time(year) + 
-  labs(title = "Year: {frame_time}") +
-  ease_aes('linear')  # This line makes the transitions smoother
-
-# Slow down the animation using `animate()`
-animated_plot <- animate(animated_plot, 
-                         duration = 10,  # Duration of the animation in seconds
-                         fps = 5,        # Frames per second (lower FPS slows the animation)
-                         end_pause = 10, # Pause at the end to hold the last frame
-                         rewind = FALSE) # Option to not rewind the animation after completion
-
-# Render the plot
-animated_plot
 
 
-```
+
+
