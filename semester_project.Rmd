@@ -1,0 +1,58 @@
+---
+title: "Semester_Project"
+author: "Rob McNeil"
+date: "2024-11-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r, message=FALSE, warning=FALSE}
+
+library(spatstat)
+SAMSHA <-read.csv("C:/Users/rrm10/Downloads/SAMHSA.csv")
+
+
+```
+
+
+
+
+
+```{r, warning=FALSE,message=FALSE}
+
+#provide range in how we want to consider obervations
+bbx<- owin(xrange = range(SAMSHA$LONGITUDE), yrange = range(SAMSHA$LATITUDE))
+#planar point pattern: specify 2 coloumns in dataset that represent geo-spatial dimensions, store it in object X
+X <- ppp(SAMSHA$LONGITUDE, SAMSHA$LATITUDE, window = bbx)
+#warning (data contains duplicated points)
+X
+plot(X)
+# create basic visualization, can see density follows front range
+
+
+
+
+# Get the number of rows in SAMSHA dataset
+n <- dim(SAMSHA)[1]  # Get number of rows (observations)
+
+# Initialize a vector to store facility type marks, initially set to 0
+fmv <- rep(0, n)
+
+#use regular expression to stratify mental health facility 
+tmp <-grep("psychiatric|mental",SAMSHA$Facility_Type, ignore.case=TRUE)
+
+fmv[tmp]<-1
+
+fmv<- factor(fmv)
+
+X.m <- ppp(SAMSHA$LONGITUDE,SAMSHA$LATITUDE,window=bbx,marks = fmv)
+plot(X.m)
+
+
+
+```
