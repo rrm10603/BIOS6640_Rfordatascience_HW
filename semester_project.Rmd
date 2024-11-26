@@ -5,6 +5,12 @@ date: "2024-11-26"
 output: html_document
 ---
 
+#assess type_ and facility_type for missingness
+#aggregate: create subgroups so you have 2 or three types
+#how do I handle types that use both bup and nax? For geospatial, you can decide what you want to investiate
+#can make 4 groups, no, 1, other, both, can compare in terms of how they are spatially distributed
+#go to the hackathon meetings on monday
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -33,9 +39,6 @@ X <- ppp(SAMSHA$LONGITUDE, SAMSHA$LATITUDE, window = bbx)
 X
 plot(X)
 # create basic visualization, can see density follows front range
-
-
-
 
 # Get the number of rows in SAMSHA dataset
 n <- dim(SAMSHA)[1]  # Get number of rows (observations)
