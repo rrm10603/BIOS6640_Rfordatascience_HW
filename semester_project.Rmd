@@ -10,6 +10,7 @@ output: html_document
 #how do I handle types that use both bup and nax? For geospatial, you can decide what you want to investiate
 #can make 4 groups, no, 1, other, both, can compare in terms of how they are spatially distributed
 #go to the hackathon meetings on monday
+#base R subsetting 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -22,8 +23,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(spatstat)
 SAMSHA <-read.csv("C:/Users/rrm10/Downloads/SAMHSA.csv")
 
+#api key: 93ad8b2e-920b-4037-8f94-97ec41ee397d
 
 ```
+
 
 
 
@@ -48,14 +51,107 @@ fmv <- rep(0, n)
 
 #use regular expression to stratify mental health facility 
 tmp <-grep("psychiatric|mental",SAMSHA$Facility_Type, ignore.case=TRUE)
+#wmp <-grep("residential", SAMSHA$Facility_type, ignore.case=TRUE)
 
 fmv[tmp]<-1
 
-fmv<- factor(fmv)
+fmv1<- factor(fmv,levels = c(0,1), labels = c("General Facility", "Psychiatric Facility"))
 
-X.m <- ppp(SAMSHA$LONGITUDE,SAMSHA$LATITUDE,window=bbx,marks = fmv)
+X.m <- ppp(SAMSHA$LONGITUDE,SAMSHA$LATITUDE,window=bbx,marks = fmv1)
 plot(X.m)
 
+tmp<-grep("residential", SAMSHA$Facility_Type, ignore.case=TRUE)
+fmv[tmp]<-2
+fmv2 <-factor(fmv)
+X.m2 <- ppp(SAMSHA$LONGITUDE,SAMSHA$LATITUDE,window=bbx,marks=fmv2)
+plot(X.m2)
 
+#looks like a facility contains both? 
+
+
+```
+
+
+
+Statistical Inference using K function 
+```{r, warning=FALSE}
+estK <-Kest(X)
+plot(estK)
+#question at 20 minutes should I be making seperate vectors for each>
+#this method doesnt consider marks, only considers distrobution of datapints (27:00)
+#null hypothesis assumes a complete spatial randomness
+#why do I get 4 lines? 
+
+swb<-rescale(X)
+kvb<-varblock(swb,Kest,nx=8,ny=8) #bootstrap function utilizing binning 
+plot(kvb)
+
+kvl <-lohboot(swb,Kest)    #confidence intervals, runs many simulations. more sophisticated
+plot(kvl)
+
+
+E <- envelope(swb,Kest)  #summary of simulation
+E
+
+
+
+
+```
+other method based on stratification of different marks at 44:00
+
+```{r, warning=FALSE}
+
+probH <-relrisk(X.m2,diggle=T) #non-parametric test estimating relative risk
+plot(probH)
+#consider increasing to 100 or 200 for semester project
+segregation.test(X.m2,nsim=20,hmin=0.05,hmax=5)
+
+#am I using this correctly with a stratified into 3 
+
+
+```
+
+
+
+Question 2: Are spatial distribuions of behavioral health treatment service providers throughout Colorado different based on whether Naltrexone or buprenorphine is used in treatment> 
+
+
+
+
+```{r, warning=FALSE}
+
+# create dummy variables for Naltrexone or buprenorphine 
+
+SAMSHA$Naltrexone_used <- ifelse(SAMSHA$Naltrexone_used_in_Treatment == "Naltrexone used in Treatment", 1, 0)
+SAMSHA$Buprenorphine_used <- ifelse(SAMSHA$Buprenorphine_used_in_Treatment == "Buprenorphine used in Treatment", 1,0)
+
+#head(SAMSHA[, c("Naltrexone_used", "Buprenorphine_used")])
+
+#proceeding with analysis:
+
+X_naltrexone <- ppp(SAMSHA$LONGITUDE[SAMSHA$Naltrexone_used == 1], 
+                    SAMSHA$LATITUDE[SAMSHA$Naltrexone_used == 1], window = bbx)
+plot(X_naltrexone, main = "Spatial Distribution of Naltrexone Treatment Facilities")
+
+X_buprenorphine <- ppp(SAMSHA$LONGITUDE[SAMSHA$Buprenorphine_used == 1], 
+                       SAMSHA$LATITUDE[SAMSHA$Buprenorphine_used == 1], window = bbx)
+plot(X_buprenorphine, main = "Spatial Distribution of Buprenorphine Treatment Facilities")
+
+
+plot(X_naltrexone, main = "Spatial Distribution of Naltrexone and Buprenorphine Treatment Facilities", col= "blue")
+points(X_buprenorphine, col = "red")
+legend("topright", legend = c("Naltrexone", "Buprenorphine"), col = c("blue", "red"), pch = 16)
+
+
+
+#spatial statistics
+
+# K-function for Naltrexone
+K_naltrexone <- Kest(X_naltrexone)
+plot(K_naltrexone)
+
+# K-function for Buprenorphine
+K_buprenorphine <- Kest(X_buprenorphine)
+plot(K_buprenorphine)
 
 ```
