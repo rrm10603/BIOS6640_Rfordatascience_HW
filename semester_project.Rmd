@@ -27,7 +27,25 @@ SAMSHA <-read.csv("C:/Users/rrm10/Downloads/SAMHSA.csv")
 
 ```
 
+```{r,warning=FALSE}
 
+#str(SAMSHA)
+
+
+#explore missingness between Type_ and Facility_Type 
+
+unique(SAMSHA$Type_)
+unique(SAMSHA$Facility_Type)
+
+length(SAMSHA$Type_)
+length(SAMSHA$Facility_Type)
+
+sum(is.na(SAMSHA$Type_))
+sum(is.na(SAMSHA$Facility_Type))
+
+#neither column has missingness, I think I'm going to use Facility_Type because it will be easier for me to stratify
+
+```
 
 
 
@@ -104,12 +122,54 @@ other method based on stratification of different marks at 44:00
 probH <-relrisk(X.m2,diggle=T) #non-parametric test estimating relative risk
 plot(probH)
 #consider increasing to 100 or 200 for semester project
-segregation.test(X.m2,nsim=20,hmin=0.05,hmax=5)
+segregation.test(X.m2,nsim=200,hmin=0.05,hmax=5)
 
 #am I using this correctly with a stratified into 3 
 
 
 ```
+
+
+
+
+
+
+
+```{r}
+
+
+
+library(ggplot2)
+
+register_stadiamaps(key = "93ad8b2e-920b-4037-8f94-97ec41ee397d")
+
+# Step 1: Extract coordinates and facility types from X.m2
+coords_df <- data.frame(
+  Longitude = X.m2$x,  # Longitude values from X.m2
+  Latitude = X.m2$y,   # Latitude values from X.m2
+  Facility_Type = factor(X.m2$marks, levels = c("0", "1", "2"), 
+                         labels = c("General Facility", "Psychiatric Facility", "Residential Facility"))
+)
+
+# Step 2: Get the basemap (adjust zoom if needed)
+colo_map <- get_stadiamap(colo, zoom = 7, maptype = "stamen_terrain") |> ggmap()
+
+# Step 3: Create the map with ggplot2, overlaying the points
+colo_map + 
+  geom_point(aes(x = Longitude, y = Latitude, color = Facility_Type), data = coords_df, size = 3) +
+  scale_color_manual(values = c("General Facility" = "blue", "Psychiatric Facility" = "red", "Residential Facility" = "green")) +
+  theme_minimal() +
+  labs(title = "Mental Health Facility Distribution",
+       subtitle = "Facilities marked by type (General, Psychiatric, Residential)",
+       x = "Longitude", y = "Latitude")
+
+
+
+
+
+
+```
+
 
 
 
