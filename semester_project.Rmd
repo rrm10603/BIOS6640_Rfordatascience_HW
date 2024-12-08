@@ -23,9 +23,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(spatstat)
 library(ggmap)
 library(ggplot2)
+library(knitr)
 SAMSHA <-read.csv("C:/Users/rrm10/Downloads/SAMHSA.csv")
 
-#api key: 93ad8b2e-920b-4037-8f94-97ec41ee397d
+
 
 ```
 
@@ -96,7 +97,7 @@ plot(X.m2)
 # Perform quadrat counting with 8x8 bins
 Q8 <- quadratcount(X.m2, nx=8, ny=8)
 
-plot(Q8,main="Quadrat Count Plot")
+plot(Q8,main= " Table 1: Quadrat Count Plot")
 
 # Perform the quadrat test for the observed point pattern X.m (you may also want to test X.m2)
 quadrat_test_result <- quadrat.test(X.m2, nx=8, ny=8)
@@ -137,9 +138,33 @@ other method based on stratification of different marks at 44:00
 ```{r, warning=FALSE}
 
 probH <-relrisk(X.m2,diggle=T) #non-parametric test estimating relative risk
-plot(probH)
+plot(probH, main="Density Plot (by Facility Type)")
 #consider increasing to 100 or 200 for semester project
-segregation.test(X.m2,nsim=200,hmin=0.05,hmax=5)
+seg_test_fac <-segregation.test(X.m2,nsim=200,hmin=0.05,hmax=5)
+
+
+
+```
+
+```{r}
+#make table for writeup output 
+
+# Extract values from the segregation test result
+test_statistic <- seg_test_fac$statistic
+p_value <- seg_test_fac$p.value
+method <- seg_test_fac$method
+data_name <- seg_test_fac$data.name
+
+# Create a data frame to structure the output
+segregation_result <- data.frame(
+  Metric = c("Test Statistic", "p-value", "Method", "Data Name"),
+  Value = c(test_statistic, p_value, method, data_name)
+)
+
+# Use kable to create a nicely formatted table
+
+kable(segregation_result, caption = "Table 1: Segregation Test Results (By Facility)", format = "pipe")
+
 
 
 
@@ -202,34 +227,7 @@ table(SAMSHA$Opiod_Treatment_Settings, SAMSHA$Naltrexone_used_in_Treatment, SAMS
 ```
 
 
-```{r, warning = FALSE}
 
-# Create a new vector to store marks for Naltrexone/Buprenorphine usage
-treatment_marks <- rep(0, n)
-
-# regular expression to find rows where Naltrexone is used in treatment
-naltrexone_treatment <- grep("Naltrexone used in Treatment", SAMSHA$Opiod_Treatment_Settings, ignore.case = TRUE)  # Find Naltrexone mentions
-negative_naltrexone <- grep("Does not treat opioid addiction|Do not use medication for opioid addiction", SAMSHA$Opiod_Treatment_Settings, ignore.case = TRUE)  # Find negative contexts for Naltrexone
-
-# Remove cases where both Naltrexone and negative contexts are mentioned
-valid_naltrexone <- setdiff(naltrexone_treatment, negative_naltrexone)
-treatment_marks[valid_naltrexone] <- 1  # Mark Naltrexone
-
-# Use regex to find rows where Buprenorphine is used in treatment, excluding negative contexts
-buprenorphine_treatment <- grep("Buprenorphine used in Treatment", SAMSHA$Opiod_Treatment_Settings, ignore.case = TRUE)  # Find Buprenorphine mentions
-negative_buprenorphine <- grep("Does not treat opioid addiction|Do not use medication for opioid addiction", SAMSHA$Opiod_Treatment_Settings, ignore.case = TRUE)  # Find negative contexts for Buprenorphine
-
-# mark cases where both Buprenorphine and negative contexts are mentioned
-valid_buprenorphine <- setdiff(buprenorphine_treatment, negative_buprenorphine)
-treatment_marks[valid_buprenorphine] <- 2  # Mark Buprenorphine
-
-# Create a factor for Naltrexone/Buprenorphine treatments
-treatment_factors <- factor(treatment_marks, levels = c(0, 1, 2), labels = c("No Medication", "Naltrexone", "Buprenorphine"))
-
-# Store this in the point pattern object X.m
-Y.m <- ppp(SAMSHA$LONGITUDE, SAMSHA$LATITUDE, window = bbx, marks = treatment_factors)
-
-```
 
 
 ```{r, warning=FALSE}
@@ -270,9 +268,45 @@ Y.m <- ppp(SAMSHA$LONGITUDE, SAMSHA$LATITUDE, window = bbx, marks = ymv)
 
 #statistical inference
 probI <- relrisk(Y.m, diggle = TRUE)  # Non-parametric test estimating relative risk
-plot(probI)
+plot(probI, main="Density Plot (by treatment")
 
-segregation.test(Y.m, nsim = 20, hmin = 0.05, hmax = 5)
+seg_treatment <-segregation.test(Y.m, nsim = 200, hmin = 0.05, hmax = 5)
+
+
+
+```
+
+```{r}
+# Vary the bandwidth to see its impact on the relative risk estimate
+bandwidth_values <- c(0.5, 1, 2, 5)  # bandwidth increased to avoid underflow 
+
+# Loop over different bandwidth values and calculate relative risk for each
+for (bw in bandwidth_values) {
+  probI <- relrisk(Y.m, diggle = TRUE, sigma = bw)  # Adjust bandwidth
+  plot(probI, main = paste("Density Plot (Bandwidth =", bw, ")"))
+}
+
+
+```
+Making a table from segregation test
+```{r}
+# Extract values from the segregation test result
+test_statistic <- seg_treatment$statistic
+p_value <- seg_treatment$p.value
+method <- seg_treatment$method
+data_name <- seg_treatment$data.name
+
+# Create a data frame to structure the output
+segregation_results <- data.frame(
+  Metric = c("Test Statistic", "p-value", "Method", "Data Name"),
+  Value = c(test_statistic, p_value, method, data_name)
+)
+
+# Use kable to create a nicely formatted table
+
+kable(segregation_results, caption = "Table 2: Segregation Test Results (By Treatment)", format = "pipe")
+
+
 
 ```
 
@@ -280,122 +314,11 @@ segregation.test(Y.m, nsim = 20, hmin = 0.05, hmax = 5)
 Data Visualization Using Smoothing clusters 
 To understand the concentratio of facilities, density plot will highlight regions with higher densicy 
 
-```{r}
-
-#extract coordinates and treatment types from Y.m ppp object
-
-coords_df_y <- data.frame(
-  Longitude = Y.m$x,  # Longitude values from Y.m
-  Latitude = Y.m$y,   # Latitude values from Y.m
-  Facility_Type = factor(Y.m$marks, levels = c("No Medication", "Naltrexone", "Buprenorphine","Naltrexone and Buprenorphine"))
-)
-
-#subset data by treatment type
-
-# Subset the data by treatment type
-coords_df_naltrexone <- coords_df_y[coords_df_y$Facility_Type == "Naltrexone", ]
-coords_df_buprenorphine <- coords_df_y[coords_df_y$Facility_Type == "Buprenorphine", ]
-coords_df_no_medication <- coords_df_y[coords_df_y$Facility_Type == "No Medication", ]
-coord_df_both <-coords_df_y[coords_df_y$]
-
-
-# Background map with density overlay
-colo_map_background <- get_stadiamap(colo, zoom = 7, maptype = "stamen_toner_background") |> ggmap(darken = 0.7)
-
-# Overlay density plot with fill
-colo_map_background +
-  stat_density_2d(aes(Longitude, Latitude, fill = ..level..), data = coords_df_y, geom = "polygon", alpha = 0.5) +
-  scale_fill_gradient2("Facility Density", low = "white", mid = "yellow", high = "red") +
-  theme(legend.position = "left") +
-  labs(title = "Density Heatmap of Behavioral Health Facilities",
-       subtitle = "Colored by Treatment Density (No Medication, Naltrexone, Buprenorphine)")
-
-
-
-```
-
-
-
-
-```{r}
-# Extract coordinates and treatment types from Y.m
-coords_df_y <- data.frame(
-  Longitude = Y.m$x,  # Longitude values from Y.m
-  Latitude = Y.m$y,   # Latitude values from Y.m
-  Treatment_Type = factor(Y.m$marks, levels = c("No Medication", "Naltrexone", "Buprenorphine","Naltrexone and Buprenorphine"))
-)
-
-# Background map with density overlay
-colo_map_background <- get_stadiamap(colo, zoom = 7, maptype = "stamen_toner_background") |> ggmap(darken = 0.7)
-
-# Plot density for Naltrexone
-colo_map_background + 
-  stat_density_2d(data = coords_df[coords_df$Treatment_Type == "Naltrexone", ], 
-                  aes(x = Longitude, y = Latitude, fill = ..level..), 
-                  geom = "polygon", alpha = 0.5) +
-  scale_fill_gradient2("Density", low = "white", mid = "yellow", high = "red") +
-  theme(legend.position = "left") +
-  labs(title = "Density Heatmap of Naltrexone Treatment Facilities")
-
-# Plot density for Buprenorphine
-colo_map_background + 
-  stat_density_2d(data = coords_df[coords_df$Treatment_Type == "Buprenorphine", ], 
-                  aes(x = Longitude, y = Latitude, fill = ..level..), 
-                  geom = "polygon", alpha = 0.5) +
-  scale_fill_gradient2("Density", low = "white", mid = "yellow", high = "red") +
-  theme(legend.position = "left") +
-  labs(title = "Density Heatmap of Buprenorphine Treatment Facilities")
-
-# Plot density for No Medication
-colo_map_background + 
-  stat_density_2d(data = coords_df[coords_df$Treatment_Type == "No Medication", ], 
-                  aes(x = Longitude, y = Latitude, fill = ..level..), 
-                  geom = "polygon", alpha = 0.5) +
-  scale_fill_gradient2("Density", low = "white", mid = "yellow", high = "red") +
-  theme(legend.position = "left") +
-  labs(title = "Density Heatmap of No Medication Facilities")
-
-```
-
-
-
-
-```{r}
-
-# Background map with density overlay
-colo_map_background <- get_stadiamap(colo, zoom = 7, maptype = "stamen_toner_background") |> ggmap(darken = 0.7)
-
-# Overlay density plots for each treatment type with treatment categories as colors
-colo_map_background +
-  geom_point(data = coords_df, 
-             aes(x = Longitude, y = Latitude, color = Treatment_Type), 
-             size = 3, alpha = 0.5) +
-  scale_color_manual(values = c("No Medication" = "blue", 
-                                "Naltrexone" = "red", 
-                                "Buprenorphine" = "green")) +
-  theme_minimal() +
-  labs(title = "Mental Health Facility Distribution by Treatment Type",
-       subtitle = "Colored by Treatment Type (Naltrexone, Buprenorphine, No Medication)",
-       x = "Longitude", y = "Latitude")
-
-
-
-```
-
-
-
 
 Statistical inference
 Stratified Point Pattern: Since Y.m has categorical marks (i.e., treatment types), you can perform the relative risk and segregation test in a stratified manner, as you've done with X.m2. In Y.m, the marks (Naltrexone, Buprenorphine, No Medication) represent different treatments, so you are comparing the spatial patterns of these three treatment types.
 
-```{r}
-probY <-relrisk(Y.m,diggle=T) #non-parametric test estimating relative risk
-plot(probY)
-#consider increasing to 100 or 200 for semester project
-segregation.test(Y.m,nsim=200,hmin=0.01,hmax=10)
 
- 
-```
 
 
 
@@ -403,8 +326,8 @@ segregation.test(Y.m,nsim=200,hmin=0.01,hmax=10)
 
 #  Extract coordinates and treatment from ppp Y.m
 coords_df_y <- data.frame(
-  Longitude = Y.m$x,  # Longitude values from X.m2
-  Latitude = Y.m$y,   # Latitude values from X.m2
+  Longitude = Y.m$x,  
+  Latitude = Y.m$y,   
    treatment_type = factor(Y.m$marks, levels = c("No Medication", "Naltrexone", "Buprenorphine"))
 )
 
@@ -423,7 +346,7 @@ colo_map_background +
                                 "Buprenorphine" = "green")) +
   theme_minimal() +
   labs(title = "Mental Health Facility Distribution by Treatment Type",
-       subtitle = "Colored by Treatment Type (Naltrexone, Buprenorphine, No Medication, Both)",
+       subtitle = "Colored by Treatment Type (Naltrexone, Buprenorphine, No Medication)",
        x = "Longitude", y = "Latitude")
 
 
